@@ -44,7 +44,12 @@ void label_img::mousePressEvent(QMouseEvent *ev)
     }
     else if(ev->button() == Qt::LeftButton)
     {
-        if(m_bLabelingStarted == false)
+        if((ev->modifiers() & Qt::ControlModifier) && !m_bLabelingStarted)
+        {
+            setFocusedObjectBoxLabel(m_relative_mouse_pos_in_ui, m_focusedObjectLabel);
+            showImage();
+        }
+        else if(m_bLabelingStarted == false)
         {
             m_relatvie_mouse_pos_LBtnClicked_in_ui      = m_relative_mouse_pos_in_ui;
             m_bLabelingStarted                          = true;
@@ -402,6 +407,32 @@ void label_img::clearUndoHistory()
 {
     m_undoHistory.clear();
     m_redoHistory.clear();
+}
+
+void label_img::setFocusedObjectBoxLabel(QPointF point, int newLabel)
+{
+    int boxIdx = -1;
+    double nearestBoxDistance = 99999999999999.;
+
+    for(int i = 0; i < m_objBoundingBoxes.size(); i++)
+    {
+        QRectF objBox = m_objBoundingBoxes.at(i).box;
+
+        if(objBox.contains(point))
+        {
+            double distance = objBox.width() + objBox.height();
+            if(distance < nearestBoxDistance)
+            {
+                nearestBoxDistance = distance;
+                boxIdx = i;
+            }
+        }
+    }
+
+    if(boxIdx != -1 && newLabel >= 0 && newLabel < m_objList.size())
+    {
+        m_objBoundingBoxes[boxIdx].label = newLabel;
+    }
 }
 
 QRectF label_img::getRelativeRectFromTwoPoints(QPointF p1, QPointF p2)
