@@ -47,7 +47,10 @@ void label_img::mousePressEvent(QMouseEvent *ev)
 {
     setMousePosition(ev->x(), ev->y());
 
-    if(ev->button() == Qt::MiddleButton && m_zoomFactor > 1.0)
+    bool panStart = (m_zoomFactor > 1.0) &&
+                    ((ev->button() == Qt::MiddleButton) ||
+                     (ev->button() == Qt::LeftButton && (ev->modifiers() & Qt::ControlModifier)));
+    if(panStart)
     {
         m_bPanning = true;
         m_panStartWidgetPos = ev->pos();
@@ -93,7 +96,7 @@ void label_img::mousePressEvent(QMouseEvent *ev)
 
 void label_img::mouseReleaseEvent(QMouseEvent *ev)
 {
-    if(ev->button() == Qt::MiddleButton && m_bPanning)
+    if(m_bPanning && (ev->button() == Qt::MiddleButton || ev->button() == Qt::LeftButton))
     {
         m_bPanning = false;
         setCursor(Qt::ArrowCursor);
