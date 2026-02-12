@@ -60,7 +60,7 @@ public:
     bool redo();
     void clearUndoHistory();
 
-    QImage getInputImage() const { return m_inputImg; }
+
     void moveBoxUnderCursor(QPointF cursorPos, double dx, double dy);
     int  findBoxUnderCursor(QPointF point) const;
     QImage crop(QRect);

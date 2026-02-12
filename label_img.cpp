@@ -680,7 +680,7 @@ void label_img::zoomIn(QPoint widgetPos)
 
     QPointF relPos = cvtAbsoluteToRelativePoint(widgetPos);
 
-    m_zoomFactor = std::min(m_zoomFactor * 1.2, 10.0);
+    m_zoomFactor = std::min(m_zoomFactor * 1.05, 10.0);
 
     m_panOffset.setX(relPos.x() - static_cast<double>(widgetPos.x()) / (m_zoomFactor * this->width()));
     m_panOffset.setY(relPos.y() - static_cast<double>(widgetPos.y()) / (m_zoomFactor * this->height()));
@@ -695,7 +695,7 @@ void label_img::zoomOut(QPoint widgetPos)
 
     QPointF relPos = cvtAbsoluteToRelativePoint(widgetPos);
 
-    m_zoomFactor = std::max(m_zoomFactor / 1.2, 1.0);
+    m_zoomFactor = std::max(m_zoomFactor / 1.05, 1.0);
 
     if(m_zoomFactor <= 1.0)
     {

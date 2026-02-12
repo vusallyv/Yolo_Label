@@ -55,7 +55,6 @@ private slots:
     void on_usageTimer_timeout();
     void on_usageTimerReset_clicked();
     void copy_previous_annotations();
-    void track_from_previous();
     void reset_zoom();
 
 private:
@@ -100,7 +99,6 @@ private:
     QPushButton    *m_usageTimerResetButton;
 
     QVector<ObjectLabelingBox> m_previousAnnotations;
-    QImage                     m_previousImage;
 
 protected:
     void    wheelEvent(QWheelEvent *);

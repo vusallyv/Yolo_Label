@@ -154,7 +154,6 @@ To minimize wrist strain when labeling, I adopted the method **"twice left butto
 | `Ctrl + D` | Delete current image |
 | `Ctrl + Z` (Windows/Linux) / `Cmd + Z` (macOS) | Undo last action (add, remove, or label change) |
 | `Ctrl + V` (Windows/Linux) / `Cmd + V` (macOS) | Copy annotations from the previous image to the current image |
-| `Ctrl + T` (Windows/Linux) / `Cmd + T` (macOS) | Track + copy annotations from previous image using optical flow (requires OpenCV) |
 | `Arrow Keys` | Nudge the bounding box under the cursor (~1-2px step) |
 | `Shift + Arrow Keys` | Nudge the bounding box under the cursor (~5px step) |
 | `Ctrl + 0` | Reset zoom to 100% |
