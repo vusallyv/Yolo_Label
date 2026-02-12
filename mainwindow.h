@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QPushButton>
 
+#include "label_img.h"
 #include <iostream>
 #include <fstream>
 
@@ -53,6 +54,7 @@ private slots:
     void redo();
     void on_usageTimer_timeout();
     void on_usageTimerReset_clicked();
+    void copy_previous_annotations();
 
 private:
     void updateUsageTimerLabel();
@@ -94,6 +96,8 @@ private:
     qint64          m_usageTimerElapsedSeconds;
     QLabel         *m_usageTimerLabel;
     QPushButton    *m_usageTimerResetButton;
+
+    QVector<ObjectLabelingBox> m_previousAnnotations;
 
 protected:
     void    wheelEvent(QWheelEvent *);

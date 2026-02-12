@@ -34,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(new QShortcut(QKeySequence(Qt::Key_Space), this), SIGNAL(activated()), this, SLOT(next_img()));
     connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_D), this), SIGNAL(activated()), this, SLOT(remove_img()));
     connect(new QShortcut(QKeySequence(Qt::Key_Delete), this), SIGNAL(activated()), this, SLOT(remove_img()));
+    connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_V), this), SIGNAL(activated()), this, SLOT(copy_previous_annotations()));
 
     QShortcut *undoShortcut = new QShortcut(QKeySequence::Undo, this, SLOT(undo()));
     undoShortcut->setContext(Qt::ApplicationShortcut);
@@ -155,12 +156,14 @@ void MainWindow::goto_img(const int fileIndex)
 
 void MainWindow::next_img(bool bSavePrev)
 {
+    m_previousAnnotations = ui->label_image->m_objBoundingBoxes;
     if(bSavePrev && ui->label_image->isOpened()) save_label_data();
     goto_img(m_imgIndex + 1);
 }
 
 void MainWindow::prev_img(bool bSavePrev)
 {
+    m_previousAnnotations = ui->label_image->m_objBoundingBoxes;
     if(bSavePrev) save_label_data();
     goto_img(m_imgIndex - 1);
 }
@@ -562,4 +565,12 @@ void MainWindow::updateUsageTimerLabel()
     int s     = static_cast<int>(secs % 60);
     QString text = QString("Usage: %1h %2m %3s").arg(hours).arg(mins, 2, 10, QChar('0')).arg(s, 2, 10, QChar('0'));
     m_usageTimerLabel->setText(text);
+}
+
+void MainWindow::copy_previous_annotations()
+{
+    if(m_previousAnnotations.isEmpty() || !ui->label_image->isOpened()) return;
+    ui->label_image->saveState();
+    ui->label_image->m_objBoundingBoxes = m_previousAnnotations;
+    ui->label_image->showImage();
 }
