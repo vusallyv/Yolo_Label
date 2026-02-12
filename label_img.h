@@ -60,6 +60,8 @@ public:
     void clearUndoHistory();
 
     QImage getInputImage() const { return m_inputImg; }
+    void moveBoxUnderCursor(QPointF cursorPos, double dx, double dy);
+    int  findBoxUnderCursor(QPointF point) const;
     QImage crop(QRect);
 
     QRectF  getRelativeRectFromTwoPoints(QPointF , QPointF);
@@ -94,6 +96,12 @@ private:
 
     QVector< QVector<ObjectLabelingBox> > m_undoHistory;
     QVector< QVector<ObjectLabelingBox> > m_redoHistory;
+
+    bool    m_bDragging;
+    bool    m_bDragPending;
+    int     m_dragBoxIdx;
+    QPointF m_dragOffset;
+    QPointF m_dragStartPos;
 
     void setMousePosition(int , int);
 

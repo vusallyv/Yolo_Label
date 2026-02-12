@@ -441,6 +441,8 @@ void MainWindow::keyPressEvent(QKeyEvent * event)
 
     bool    graveAccentKeyIsPressed    = (nKey == Qt::Key_QuoteLeft);
     bool    numKeyIsPressed            = (nKey >= Qt::Key_0 && nKey <= Qt::Key_9 );
+    bool    arrowKeyIsPressed          = (nKey == Qt::Key_Up || nKey == Qt::Key_Down ||
+                                          nKey == Qt::Key_Left || nKey == Qt::Key_Right);
 
     if(graveAccentKeyIsPressed)
     {
@@ -454,6 +456,24 @@ void MainWindow::keyPressEvent(QKeyEvent * event)
         {
             set_label(asciiToNumber);
         }
+    }
+    else if(arrowKeyIsPressed && ui->label_image->isOpened())
+    {
+        if(!event->isAutoRepeat())
+            ui->label_image->saveState();
+
+        bool shiftHeld = (event->modifiers() & Qt::ShiftModifier);
+        double step = shiftHeld ? 0.01 : 0.002;
+
+        double dx = 0.0, dy = 0.0;
+        if(nKey == Qt::Key_Left)  dx = -step;
+        if(nKey == Qt::Key_Right) dx =  step;
+        if(nKey == Qt::Key_Up)    dy = -step;
+        if(nKey == Qt::Key_Down)  dy =  step;
+
+        QPointF cursorPos = ui->label_image->cvtAbsoluteToRelativePoint(
+            ui->label_image->mapFromGlobal(QCursor::pos()));
+        ui->label_image->moveBoxUnderCursor(cursorPos, dx, dy);
     }
 }
 
