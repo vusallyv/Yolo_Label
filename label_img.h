@@ -59,6 +59,7 @@ public:
     bool redo();
     void clearUndoHistory();
 
+    QImage getInputImage() const { return m_inputImg; }
     QImage crop(QRect);
 
     QRectF  getRelativeRectFromTwoPoints(QPointF , QPointF);

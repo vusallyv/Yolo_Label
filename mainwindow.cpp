@@ -11,6 +11,11 @@
 #include <QCollator>
 #include <iomanip>
 #include <cmath>
+#include <algorithm>
+
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/video/tracking.hpp>
 
 using std::cout;
 using std::endl;
@@ -35,6 +40,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_D), this), SIGNAL(activated()), this, SLOT(remove_img()));
     connect(new QShortcut(QKeySequence(Qt::Key_Delete), this), SIGNAL(activated()), this, SLOT(remove_img()));
     connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_V), this), SIGNAL(activated()), this, SLOT(copy_previous_annotations()));
+    connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_T), this), SIGNAL(activated()), this, SLOT(track_from_previous()));
 
     QShortcut *undoShortcut = new QShortcut(QKeySequence::Undo, this, SLOT(undo()));
     undoShortcut->setContext(Qt::ApplicationShortcut);
@@ -157,6 +163,7 @@ void MainWindow::goto_img(const int fileIndex)
 void MainWindow::next_img(bool bSavePrev)
 {
     m_previousAnnotations = ui->label_image->m_objBoundingBoxes;
+    m_previousImage = ui->label_image->getInputImage();
     if(bSavePrev && ui->label_image->isOpened()) save_label_data();
     goto_img(m_imgIndex + 1);
 }
@@ -164,6 +171,7 @@ void MainWindow::next_img(bool bSavePrev)
 void MainWindow::prev_img(bool bSavePrev)
 {
     m_previousAnnotations = ui->label_image->m_objBoundingBoxes;
+    m_previousImage = ui->label_image->getInputImage();
     if(bSavePrev) save_label_data();
     goto_img(m_imgIndex - 1);
 }
@@ -572,5 +580,122 @@ void MainWindow::copy_previous_annotations()
     if(m_previousAnnotations.isEmpty() || !ui->label_image->isOpened()) return;
     ui->label_image->saveState();
     ui->label_image->m_objBoundingBoxes = m_previousAnnotations;
+    ui->label_image->showImage();
+}
+
+static cv::Mat qImageToGray(const QImage &img)
+{
+    QImage rgb = img.convertToFormat(QImage::Format_RGB888);
+    cv::Mat mat(rgb.height(), rgb.width(), CV_8UC3,
+                const_cast<uchar*>(rgb.bits()), rgb.bytesPerLine());
+    cv::Mat gray;
+    cv::cvtColor(mat, gray, cv::COLOR_RGB2GRAY);
+    return gray.clone();
+}
+
+void MainWindow::track_from_previous()
+{
+    if(m_previousAnnotations.isEmpty() || m_previousImage.isNull() || !ui->label_image->isOpened()) return;
+
+    QImage currentImage = ui->label_image->getInputImage();
+    if(currentImage.isNull()) return;
+
+    cv::Mat prevGray = qImageToGray(m_previousImage);
+    cv::Mat currGray = qImageToGray(currentImage);
+
+    int imgW = m_previousImage.width();
+    int imgH = m_previousImage.height();
+
+    ui->label_image->saveState();
+
+    QVector<ObjectLabelingBox> newBoxes;
+
+    for(int b = 0; b < m_previousAnnotations.size(); b++)
+    {
+        const ObjectLabelingBox &prevBox = m_previousAnnotations[b];
+
+        // Convert relative box to pixel rect
+        int bx = static_cast<int>(prevBox.box.x() * imgW);
+        int by = static_cast<int>(prevBox.box.y() * imgH);
+        int bw = static_cast<int>(prevBox.box.width() * imgW);
+        int bh = static_cast<int>(prevBox.box.height() * imgH);
+
+        // Clamp to image bounds
+        bx = std::max(0, bx);
+        by = std::max(0, by);
+        bw = std::min(bw, imgW - bx);
+        bh = std::min(bh, imgH - by);
+
+        if(bw <= 0 || bh <= 0)
+        {
+            newBoxes.push_back(prevBox);
+            continue;
+        }
+
+        cv::Rect roi(bx, by, bw, bh);
+        cv::Mat roiGray = prevGray(roi);
+
+        // Find good features to track within this box
+        std::vector<cv::Point2f> roiPts;
+        cv::goodFeaturesToTrack(roiGray, roiPts, 50, 0.01, 5);
+
+        if(roiPts.empty())
+        {
+            // Fallback to box corners + center
+            roiPts.push_back(cv::Point2f(bw * 0.25f, bh * 0.25f));
+            roiPts.push_back(cv::Point2f(bw * 0.75f, bh * 0.25f));
+            roiPts.push_back(cv::Point2f(bw * 0.25f, bh * 0.75f));
+            roiPts.push_back(cv::Point2f(bw * 0.75f, bh * 0.75f));
+            roiPts.push_back(cv::Point2f(bw * 0.5f, bh * 0.5f));
+        }
+
+        // Convert ROI-local points to full image coordinates
+        std::vector<cv::Point2f> prevPts;
+        for(auto &p : roiPts)
+            prevPts.push_back(cv::Point2f(p.x + bx, p.y + by));
+
+        std::vector<cv::Point2f> currPts;
+        std::vector<uchar> status;
+        std::vector<float> err;
+        cv::calcOpticalFlowPyrLK(prevGray, currGray, prevPts, currPts, status, err,
+                                 cv::Size(21, 21), 3,
+                                 cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 0.01));
+
+        // Collect valid displacements
+        std::vector<double> dxVals, dyVals;
+        for(size_t i = 0; i < status.size(); i++)
+        {
+            if(status[i] && err[i] < 12.0)
+            {
+                dxVals.push_back(currPts[i].x - prevPts[i].x);
+                dyVals.push_back(currPts[i].y - prevPts[i].y);
+            }
+        }
+
+        ObjectLabelingBox newBox = prevBox;
+        if(!dxVals.empty())
+        {
+            // Use median displacement for robustness against outliers
+            std::sort(dxVals.begin(), dxVals.end());
+            std::sort(dyVals.begin(), dyVals.end());
+            double medianDx = dxVals[dxVals.size() / 2];
+            double medianDy = dyVals[dyVals.size() / 2];
+
+            double dx = medianDx / static_cast<double>(imgW);
+            double dy = medianDy / static_cast<double>(imgH);
+
+            double newX = newBox.box.x() + dx;
+            double newY = newBox.box.y() + dy;
+
+            newX = std::max(0.0, std::min(newX, 1.0 - newBox.box.width()));
+            newY = std::max(0.0, std::min(newY, 1.0 - newBox.box.height()));
+
+            newBox.box.moveLeft(newX);
+            newBox.box.moveTop(newY);
+        }
+        newBoxes.push_back(newBox);
+    }
+
+    ui->label_image->m_objBoundingBoxes = newBoxes;
     ui->label_image->showImage();
 }
