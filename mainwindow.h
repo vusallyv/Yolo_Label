@@ -56,6 +56,7 @@ private slots:
     void on_usageTimerReset_clicked();
     void copy_previous_annotations();
     void track_from_previous();
+    void reset_zoom();
 
 private:
     void updateUsageTimerLabel();

@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(new QShortcut(QKeySequence(Qt::Key_Delete), this), SIGNAL(activated()), this, SLOT(remove_img()));
     connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_V), this), SIGNAL(activated()), this, SLOT(copy_previous_annotations()));
     connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_T), this), SIGNAL(activated()), this, SLOT(track_from_previous()));
+    connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_0), this), SIGNAL(activated()), this, SLOT(reset_zoom()));
 
     QShortcut *undoShortcut = new QShortcut(QKeySequence::Undo, this, SLOT(undo()));
     undoShortcut->setContext(Qt::ApplicationShortcut);
@@ -400,10 +401,21 @@ void MainWindow::open_obj_file(bool& ret)
 
 void MainWindow::wheelEvent(QWheelEvent *ev)
 {
-    if(ev->angleDelta().y() > 0) // up Wheel
-        prev_img();
-    else if(ev->angleDelta().y() < 0) //down Wheel
-        next_img();
+    if(ev->modifiers() & Qt::ControlModifier)
+    {
+        QPoint labelPos = ui->label_image->mapFromGlobal(ev->globalPosition().toPoint());
+        if(ev->angleDelta().y() > 0)
+            ui->label_image->zoomIn(labelPos);
+        else if(ev->angleDelta().y() < 0)
+            ui->label_image->zoomOut(labelPos);
+    }
+    else
+    {
+        if(ev->angleDelta().y() > 0)
+            prev_img();
+        else if(ev->angleDelta().y() < 0)
+            next_img();
+    }
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
@@ -718,4 +730,9 @@ void MainWindow::track_from_previous()
 
     ui->label_image->m_objBoundingBoxes = newBoxes;
     ui->label_image->showImage();
+}
+
+void MainWindow::reset_zoom()
+{
+    ui->label_image->resetZoom();
 }
