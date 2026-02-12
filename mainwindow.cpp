@@ -32,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(new QShortcut(QKeySequence(Qt::Key_Space), this), SIGNAL(activated()), this, SLOT(next_img()));
     connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_D), this), SIGNAL(activated()), this, SLOT(remove_img()));
     connect(new QShortcut(QKeySequence(Qt::Key_Delete), this), SIGNAL(activated()), this, SLOT(remove_img()));
+    connect(new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_0), this), SIGNAL(activated()), this, SLOT(reset_zoom()));
 
     init_table_widget();
 }
@@ -363,10 +364,21 @@ void MainWindow::open_obj_file(bool& ret)
 
 void MainWindow::wheelEvent(QWheelEvent *ev)
 {
-    if(ev->angleDelta().y() > 0) // up Wheel
-        prev_img();
-    else if(ev->angleDelta().y() < 0) //down Wheel
-        next_img();
+    if(ev->modifiers() & Qt::ControlModifier)
+    {
+        QPoint labelPos = ui->label_image->mapFromGlobal(ev->globalPosition().toPoint());
+        if(ev->angleDelta().y() > 0)
+            ui->label_image->zoomIn(labelPos);
+        else if(ev->angleDelta().y() < 0)
+            ui->label_image->zoomOut(labelPos);
+    }
+    else
+    {
+        if(ev->angleDelta().y() > 0)
+            prev_img();
+        else if(ev->angleDelta().y() < 0)
+            next_img();
+    }
 }
 
 void MainWindow::on_pushButton_prev_clicked()
@@ -480,4 +492,9 @@ void MainWindow::on_checkBox_visualize_class_name_clicked(bool checked)
 {
     ui->label_image->m_bVisualizeClassName = checked;
     ui->label_image->showImage();
+}
+
+void MainWindow::reset_zoom()
+{
+    ui->label_image->resetZoom();
 }

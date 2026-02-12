@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QImage>
 #include <QMouseEvent>
+#include <QWheelEvent>
 #include <iostream>
 #include <fstream>
 
@@ -53,6 +54,10 @@ public:
     bool isOpened();
     QImage crop(QRect);
 
+    void zoomIn(QPoint widgetPos);
+    void zoomOut(QPoint widgetPos);
+    void resetZoom();
+
     QRectF  getRelativeRectFromTwoPoints(QPointF , QPointF);
 
     QRect   cvtRelativeToAbsoluteRectInUi(QRectF);
@@ -83,7 +88,14 @@ private:
     unsigned char m_gammatransform_lut[256];
     QVector<QRgb> colorTable;
 
+    double  m_zoomFactor;
+    QPointF m_panOffset;
+    bool    m_bPanning;
+    QPoint  m_panStartWidgetPos;
+    QPointF m_panStartOffset;
+
     void setMousePosition(int , int);
+    void clampPanOffset();
 
     void drawCrossLine(QPainter& , QColor , int thickWidth = 3);
     void drawFocusedObjectBox(QPainter& , Qt::GlobalColor , int thickWidth = 3);
@@ -91,6 +103,9 @@ private:
     void drawObjectLabels(QPainter& , int thickWidth = 3, int fontPixelSize = 14, int xMargin = 5, int yMargin = 2);
     void gammaTransform(QImage& image);
     void removeFocusedObjectBox(QPointF);
+
+protected:
+    void wheelEvent(QWheelEvent *ev) override;
 };
 
 #endif // LABEL_IMG_H

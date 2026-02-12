@@ -46,6 +46,8 @@ private slots:
 
     void on_checkBox_visualize_class_name_clicked(bool checked);
 
+    void reset_zoom();
+
 private:
     void            init();
     void            init_table_widget();
