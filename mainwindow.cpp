@@ -43,6 +43,21 @@ MainWindow::MainWindow(QWidget *parent) :
 
     qApp->installEventFilter(this);
 
+    m_usageTimerElapsedSeconds = 0;
+    m_usageTimer = new QTimer(this);
+    m_usageTimer->setInterval(1000);
+    connect(m_usageTimer, SIGNAL(timeout()), this, SLOT(on_usageTimer_timeout()));
+    m_usageTimer->start();
+
+    m_usageTimerLabel = new QLabel(this);
+    m_usageTimerLabel->setStyleSheet("color : rgb(0, 255, 255); font-weight: bold;");
+    m_usageTimerResetButton = new QPushButton(tr("Reset"), this);
+    m_usageTimerResetButton->setStyleSheet("background-color : rgb(0, 0, 17); color : rgb(0, 255, 255); border: 2px solid rgb(0, 255, 255);");
+    connect(m_usageTimerResetButton, SIGNAL(clicked()), this, SLOT(on_usageTimerReset_clicked()));
+    updateUsageTimerLabel();
+    ui->statusBar->addPermanentWidget(m_usageTimerLabel);
+    ui->statusBar->addPermanentWidget(m_usageTimerResetButton);
+
     init_table_widget();
 }
 
@@ -522,4 +537,29 @@ void MainWindow::redo()
 {
     if(ui->label_image->redo())
         ui->label_image->showImage();
+}
+
+void MainWindow::on_usageTimer_timeout()
+{
+    if (isActiveWindow())
+    {
+        m_usageTimerElapsedSeconds++;
+        updateUsageTimerLabel();
+    }
+}
+
+void MainWindow::on_usageTimerReset_clicked()
+{
+    m_usageTimerElapsedSeconds = 0;
+    updateUsageTimerLabel();
+}
+
+void MainWindow::updateUsageTimerLabel()
+{
+    qint64 secs = m_usageTimerElapsedSeconds;
+    int hours = static_cast<int>(secs / 3600);
+    int mins  = static_cast<int>((secs % 3600) / 60);
+    int s     = static_cast<int>(secs % 60);
+    QString text = QString("Usage: %1h %2m %3s").arg(hours).arg(mins, 2, 10, QChar('0')).arg(s, 2, 10, QChar('0'));
+    m_usageTimerLabel->setText(text);
 }
