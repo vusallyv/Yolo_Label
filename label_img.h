@@ -24,7 +24,6 @@ public:
     void mouseMoveEvent(QMouseEvent *ev);
     void mousePressEvent(QMouseEvent *ev);
     void mouseReleaseEvent(QMouseEvent *ev);
-    void mouseDoubleClickEvent(QMouseEvent *ev);
 
     void setFocusedObjectBoxLabel(QPointF point, int newLabel);
 
