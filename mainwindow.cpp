@@ -1562,7 +1562,14 @@ void MainWindow::doLandingAIJob(const QString &imagePath, int retryCount, int ge
 
         // Response: {"data": [[{label, score, bounding_box:[x1,y1,x2,y2]}, ...], ...]}
         QJsonValue dataVal = doc.object().value("data");
-        if (!dataVal.isArray() || dataVal.toArray().isEmpty()) {
+        if (!dataVal.isArray()) {
+            // Malformed or error response (e.g. {"error":"quota exceeded"})
+            QMessageBox::warning(this, "Landing AI", "Unexpected response from server.");
+            m_landingQueue.clear();
+            resetCloudButtons();
+            return;
+        }
+        if (dataVal.toArray().isEmpty()) {
             // Server returned no detections — preserve existing label file
             if (m_landingQueue.isEmpty()) {
                 goto_img(m_imgIndex);
@@ -1592,6 +1599,7 @@ void MainWindow::doLandingAIJob(const QString &imagePath, int retryCount, int ge
         double imgH = imgSize.height();
 
         if (imgW <= 0 || imgH <= 0) {
+            ++m_landingFailCount;
             statusBar()->showMessage(
                 "Landing AI: could not read image dimensions: " + imagePath, 5000);
             if (m_landingQueue.isEmpty()) resetCloudButtons();
@@ -1616,6 +1624,7 @@ void MainWindow::doLandingAIJob(const QString &imagePath, int retryCount, int ge
                     out << line << "\n";
                 lf.close();
             } else {
+                ++m_landingFailCount;
                 statusBar()->showMessage(
                     "Landing AI: could not write label file: " + labelPath, 5000);
                 if (m_landingQueue.isEmpty())
@@ -1692,6 +1701,7 @@ void MainWindow::landingAIAutoLabelAll()
     m_landingCancelled = false;
     m_landingBusy = true;
     ++m_landingGeneration;
+    m_landingFailCount = 0;
     m_landingQueue.clear();
     for (int i = 0; i < m_imgList.size(); ++i)
         m_landingQueue.append(i);
@@ -1710,8 +1720,14 @@ void MainWindow::landingAIProcessNextInQueue()
 {
     if (m_landingQueue.isEmpty()) {
         goto_img(m_imgIndex);
-        statusBar()->showMessage(
-            QString("Landing AI: all %1 images done.").arg(m_imgList.size()), 5000);
+        int total    = m_imgList.size();
+        int failed   = m_landingFailCount;
+        int succeeded = total - failed;
+        QString msg = failed > 0
+            ? QString("Landing AI: %1/%2 images labeled (%3 failed).")
+                  .arg(succeeded).arg(total).arg(failed)
+            : QString("Landing AI: all %1 images done.").arg(total);
+        statusBar()->showMessage(msg, 5000);
         resetCloudButtons();
         return;
     }

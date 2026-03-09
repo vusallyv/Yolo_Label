@@ -134,6 +134,7 @@ private:
     bool         m_landingCancelled  = false;
     bool         m_landingBusy       = false;
     int          m_landingGeneration = 0;
+    int          m_landingFailCount  = 0;
     QComboBox   *m_modelCombo;
     // ──────────────────────────────────────────────────────────────────
 

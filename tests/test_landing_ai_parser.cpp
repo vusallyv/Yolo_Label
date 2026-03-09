@@ -114,12 +114,25 @@ private slots:
 
     void outOfRangeCoordinates_skipped()
     {
-        // Box entirely outside image bounds → cx/cy/nw/nh fail the [0,1] guard
+        // Box entirely outside image bounds → all corners clamp to edge → zero size → skipped
         QJsonArray dets;
         dets << makeDetection("cat", 300, 300, 600, 600);  // image is 200x200
         QStringList lines = CloudAutoLabeler::parseLandingAIDetections(
             dets, {"cat"}, 200.0, 200.0);
         QVERIFY(lines.isEmpty());
+    }
+
+    void partiallyOffImageBox_clamped()
+    {
+        // Box extends beyond image edge on left → corners are clamped, valid box emitted
+        // x1=-10 → 0, y1=10 → 10, x2=90 → 90, y2=90 → 90 in 100x100 image
+        // cx=(0+90)/2/100=0.45, cy=(10+90)/2/100=0.5, nw=90/100=0.9, nh=80/100=0.8
+        QJsonArray dets;
+        dets << makeDetection("cat", -10, 10, 90, 90);
+        QStringList lines = CloudAutoLabeler::parseLandingAIDetections(
+            dets, {"cat"}, 100.0, 100.0);
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0], QString("0 0.450000 0.500000 0.900000 0.800000"));
     }
 
     void zeroSizeBox_skipped()

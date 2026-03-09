@@ -738,13 +738,18 @@ QStringList CloudAutoLabeler::parseLandingAIDetections(const QJsonArray &detecti
         double x1 = bb[0].toDouble(), y1 = bb[1].toDouble();
         double x2 = bb[2].toDouble(), y2 = bb[3].toDouble();
 
+        // Clamp corners to image bounds so partially off-image boxes are usable
+        x1 = qMax(0.0, qMin(x1, imgW));
+        y1 = qMax(0.0, qMin(y1, imgH));
+        x2 = qMax(0.0, qMin(x2, imgW));
+        y2 = qMax(0.0, qMin(y2, imgH));
+
         double cx = ((x1 + x2) / 2.0) / imgW;
         double cy = ((y1 + y2) / 2.0) / imgH;
         double nw = (x2 - x1) / imgW;
         double nh = (y2 - y1) / imgH;
 
-        if (cx < 0.0 || cx > 1.0 || cy < 0.0 || cy > 1.0 ||
-            nw <= 0.0 || nw > 1.0 || nh <= 0.0 || nh > 1.0) continue;
+        if (nw <= 0.0 || nh <= 0.0) continue;
 
         outputLines << QString("%1 %2 %3 %4 %5")
             .arg(classId)
