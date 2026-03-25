@@ -1315,7 +1315,8 @@ void MainWindow::cancelAutoLabel()
     }
     m_landingCancelled = true;
     m_landingQueue.clear();
-    m_cloudLabeler->cancel();
+    if (m_cloudLabeler->isBusy())
+        m_cloudLabeler->cancel();
     resetCloudButtons();  // always reset — busyChanged may not fire when CloudAutoLabeler is already idle
 }
 
@@ -1501,15 +1502,11 @@ void MainWindow::doLandingAIJob(const QString &imagePath, int retryCount, int ge
     imgPart.setBodyDevice(imgFile);
     multiPart->append(imgPart);
 
-    for (const QString &p : m_batchLandingPrompt.split(";")) {
-        const QString label = p.trimmed();
-        if (label.isEmpty()) continue;
-        QHttpPart promptsPart;
-        promptsPart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                              "form-data; name=\"prompts\"");
-        promptsPart.setBody(label.toUtf8());
-        multiPart->append(promptsPart);
-    }
+    QHttpPart promptsPart;
+    promptsPart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                          "form-data; name=\"prompts\"");
+    promptsPart.setBody(m_batchLandingPrompt.toUtf8());
+    multiPart->append(promptsPart);
 
     QHttpPart modelPart;
     modelPart.setHeader(QNetworkRequest::ContentDispositionHeader,
@@ -1561,15 +1558,16 @@ void MainWindow::doLandingAIJob(const QString &imagePath, int retryCount, int ge
         }
 
         // Response: {"data": [[{label, score, bounding_box:[x1,y1,x2,y2]}, ...], ...]}
+        // data may be null (no detections) or an array.
         QJsonValue dataVal = doc.object().value("data");
-        if (!dataVal.isArray()) {
+        if (!dataVal.isArray() && !dataVal.isNull()) {
             // Malformed or error response (e.g. {"error":"quota exceeded"})
             QMessageBox::warning(this, "Landing AI", "Unexpected response from server.");
             m_landingQueue.clear();
             resetCloudButtons();
             return;
         }
-        if (dataVal.toArray().isEmpty()) {
+        if (dataVal.isNull() || dataVal.toArray().isEmpty()) {
             // Server returned no detections — preserve existing label file
             if (m_landingQueue.isEmpty()) {
                 goto_img(m_imgIndex);
